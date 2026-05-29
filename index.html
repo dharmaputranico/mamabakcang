@@ -155,6 +155,30 @@
     .mobile-nav { display: none; overflow-x: auto; gap: 6px; padding: 10px 1rem; background: var(--bg-primary); border-bottom: 0.5px solid var(--border-medium); }
     .mobile-nav .nav-item { border-left: none; border-radius: 20px; border: 0.5px solid var(--border-medium); padding: 7px 14px; white-space: nowrap; font-size: 13px; }
     .mobile-nav .nav-item.active { background: var(--text-primary); color: var(--bg-primary); border-color: transparent; }
+
+    /* Production page */
+    .prod-summary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; margin-bottom: 2rem; }
+    .prod-item-card { background: var(--bg-primary); border: 0.5px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.25rem 1.5rem; display: flex; align-items: center; gap: 16px; }
+    .prod-item-icon { width: 48px; height: 48px; border-radius: 12px; background: var(--amber-bg); display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+    .prod-item-info { flex: 1; min-width: 0; }
+    .prod-item-name { font-size: 14px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .prod-item-sub { font-size: 12px; color: var(--text-secondary); font-family: system-ui, sans-serif; margin-top: 2px; }
+    .prod-item-qty { font-size: 32px; font-weight: 700; color: var(--amber-text); font-family: system-ui, sans-serif; line-height: 1; }
+    .prod-item-unit { font-size: 12px; color: var(--text-secondary); font-family: system-ui, sans-serif; margin-top: 2px; }
+
+    .prod-order-row { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 0.5px solid var(--border-light); font-family: system-ui, sans-serif; }
+    .prod-order-row:last-child { border-bottom: none; }
+    .prod-order-customer { font-size: 13px; font-weight: 500; color: var(--text-primary); min-width: 110px; }
+    .prod-order-delivery { font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
+    .prod-order-items { flex: 1; display: flex; flex-wrap: wrap; gap: 5px; }
+    .prod-order-tag { font-size: 12px; padding: 3px 10px; border-radius: 12px; background: var(--amber-bg); color: var(--amber-text); white-space: nowrap; font-weight: 500; }
+
+    .prod-date-group { margin-bottom: 1.5rem; }
+    .prod-date-label { font-size: 12px; font-weight: 600; color: var(--text-secondary); font-family: system-ui, sans-serif; letter-spacing: .04em; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+    .prod-date-label::after { content: ''; flex: 1; height: 0.5px; background: var(--border-medium); }
+
+    .prod-filter-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1.5rem; align-items: center; }
+    .prod-filter-label { font-size: 12px; color: var(--text-secondary); font-family: system-ui, sans-serif; }
   </style>
 </head>
 <body>
@@ -186,6 +210,7 @@
   <a class="nav-item" onclick="showPage('delivery',this)"><i class="ti ti-truck-delivery"></i> <span data-i18n="nav_delivery">Delivery</span></a>
   <a class="nav-item" onclick="showPage('payment',this)"><i class="ti ti-cash"></i> <span data-i18n="nav_payments">Payments</span></a>
   <a class="nav-item" onclick="showPage('revenue',this)"><i class="ti ti-chart-bar"></i> <span data-i18n="nav_revenue">Revenue</span></a>
+  <a class="nav-item" onclick="showPage('production',this)"><i class="ti ti-chef-hat"></i> <span data-i18n="nav_production">Production</span></a>
   <a class="nav-item" onclick="showPage('products',this)"><i class="ti ti-tag"></i> <span data-i18n="nav_products">Products</span></a>
 </nav>
 
@@ -197,6 +222,7 @@
     <a class="nav-item" onclick="showPage('payment',this)"><i class="ti ti-cash"></i> <span data-i18n="nav_payments">Payments</span></a>
     <a class="nav-item" onclick="showPage('revenue',this)"><i class="ti ti-chart-bar"></i> <span data-i18n="nav_revenue">Revenue</span></a>
     <div style="border-top:0.5px solid var(--border-light);padding-top:12px;margin-top:20px;">
+      <a class="nav-item" onclick="showPage('production',this)"><i class="ti ti-chef-hat"></i> <span data-i18n="nav_production">Production</span></a>
       <a class="nav-item" onclick="showPage('products',this)"><i class="ti ti-tag"></i> <span data-i18n="nav_products">Products</span></a>
     </div>
   </nav>
@@ -251,6 +277,29 @@
         <div class="card"><div class="section-title" data-i18n="by_product">By product</div><div id="revenue-bars"></div></div>
         <div class="card"><div class="section-title" data-i18n="top_customers">Top customers</div><div id="top-customers"></div></div>
       </div>
+    </div>
+
+    <div id="page-production" class="page">
+      <div class="page-header">
+        <h1 class="page-title" data-i18n="nav_production">Production</h1>
+      </div>
+      <p style="font-size:13px;color:var(--text-secondary);font-family:system-ui,sans-serif;margin-bottom:1.25rem;" data-i18n="production_hint">Total items to produce from active orders (New &amp; Preparing).</p>
+
+      <!-- Filter bar -->
+      <div class="prod-filter-bar">
+        <span class="prod-filter-label" data-i18n="prod_filter_label">Show orders for:</span>
+        <button class="filter-btn on" onclick="setProdFilter('active',this)" data-i18n="prod_filter_active">New &amp; Preparing</button>
+        <button class="filter-btn" onclick="setProdFilter('all',this)" data-i18n="prod_filter_all">All undelivered</button>
+        <button class="filter-btn" onclick="setProdFilter('new',this)" data-i18n="status_new">New only</button>
+      </div>
+
+      <!-- Summary cards -->
+      <div class="section-title" data-i18n="prod_summary">What to make</div>
+      <div class="prod-summary-grid" id="prod-summary-grid"></div>
+
+      <!-- Per-date breakdown -->
+      <div class="section-title" style="margin-top:0.5rem" data-i18n="prod_by_date">Order breakdown by delivery date</div>
+      <div id="prod-by-date"></div>
     </div>
 
     <div id="page-products" class="page">
@@ -360,6 +409,13 @@
       col_product:'Product', col_qty:'Qty', col_price:'Price', col_subtotal:'Subtotal', col_total:'Total',
       label_paid:'Paid', label_unpaid:'Unpaid', edit:'Edit', delete_confirm:'Delete this product?',
       order_label:'order', orders_label:'orders', label_qty:'Qty', label_price:'Price (Rp)',
+      nav_production:'Production',
+      production_hint:'Total items to produce from active orders (New & Preparing).',
+      prod_filter_label:'Show orders for:', prod_filter_active:'New & Preparing',
+      prod_filter_all:'All undelivered', prod_summary:'What to make',
+      prod_by_date:'Order breakdown by delivery date',
+      prod_pcs:'pcs', prod_no_orders:'No active orders to produce.',
+      prod_from:'from', prod_no_date:'No date set',
     },
     id: {
       subtitle:'Pelacak pesanan & pengiriman', nav_overview:'Ringkasan', nav_orders:'Pesanan',
@@ -392,6 +448,13 @@
       col_product:'Produk', col_qty:'Jml', col_price:'Harga', col_subtotal:'Subtotal', col_total:'Total',
       label_paid:'Lunas', label_unpaid:'Belum lunas', edit:'Ubah', delete_confirm:'Hapus produk ini?',
       order_label:'pesanan', orders_label:'pesanan', label_qty:'Jml', label_price:'Harga (Rp)',
+      nav_production:'Produksi',
+      production_hint:'Total item yang perlu dibuat dari pesanan aktif (Baru & Diproses).',
+      prod_filter_label:'Tampilkan pesanan untuk:', prod_filter_active:'Baru & Diproses',
+      prod_filter_all:'Semua belum terkirim', prod_summary:'Yang perlu dibuat',
+      prod_by_date:'Rincian pesanan per tanggal kirim',
+      prod_pcs:'bh', prod_no_orders:'Tidak ada pesanan aktif untuk diproduksi.',
+      prod_from:'dari', prod_no_date:'Tanggal belum diisi',
     }
   };
   function t(k) { return (T[lang]&&T[lang][k]) || T.en[k] || k; }
@@ -411,6 +474,7 @@
   let orders   = [];
   let products = [];
   let currentFilter = 'all';
+  let prodFilter = 'active';
 
   /* ── SYNC DOT ── */
   function setSyncState(state) {
@@ -438,10 +502,131 @@
 
   /* ── RENDER ── */
   function render() {
-    renderOverview(); renderOrders(); renderDelivery(); renderPayment(); renderRevenue(); renderProducts();
+    renderOverview(); renderOrders(); renderDelivery(); renderPayment(); renderRevenue(); renderProducts(); renderProduction();
   }
 
-  /* ── ORDER CARD ── */
+  /* ── PRODUCTION ── */
+  const PRODUCT_EMOJIS = ['🫕','🐔','🦐','🥦','🍍','🍡','🥟','🍱','🎋','🌿'];
+  function getProductEmoji(name) {
+    const n = name.toLowerCase();
+    if (n.includes('ayam') || n.includes('chicken')) return '🐔';
+    if (n.includes('udang') || n.includes('shrimp')) return '🦐';
+    if (n.includes('vegeta') || n.includes('sayur')) return '🥦';
+    if (n.includes('pineapple') || n.includes('nanas')) return '🍍';
+    if (n.includes('tart') || n.includes('kue')) return '🍡';
+    return '🫕';
+  }
+
+  window.setProdFilter = function(f, btn) {
+    prodFilter = f;
+    document.querySelectorAll('.prod-filter-bar .filter-btn').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+    renderProduction();
+  };
+
+  function getProdOrders() {
+    if (prodFilter === 'active')  return orders.filter(o => o.status === 'New' || o.status === 'Preparing');
+    if (prodFilter === 'new')     return orders.filter(o => o.status === 'New');
+    if (prodFilter === 'all')     return orders.filter(o => o.status !== 'Delivered');
+    return [];
+  }
+
+  function renderProduction() {
+    const filtered = getProdOrders();
+
+    // ── Summary cards: aggregate qty per product ──
+    const totals = {};
+    filtered.forEach(o => {
+      (o.items||[]).forEach(i => {
+        totals[i.product] = (totals[i.product]||0) + i.qty;
+      });
+    });
+
+    const summaryEl = document.getElementById('prod-summary-grid');
+    if (!summaryEl) return;
+
+    if (!Object.keys(totals).length) {
+      summaryEl.innerHTML = `<div class="empty" style="grid-column:1/-1"><i class="ti ti-basket-off"></i>${t('prod_no_orders')}</div>`;
+      document.getElementById('prod-by-date').innerHTML = '';
+      return;
+    }
+
+    summaryEl.innerHTML = Object.entries(totals)
+      .sort((a,b) => b[1]-a[1])
+      .map(([name, qty]) => `
+        <div class="prod-item-card">
+          <div class="prod-item-icon">${getProductEmoji(name)}</div>
+          <div class="prod-item-info">
+            <div class="prod-item-name">${name}</div>
+            <div class="prod-item-sub">${filtered.filter(o=>(o.items||[]).some(i=>i.product===name)).length} ${t('orders_label')}</div>
+          </div>
+          <div style="text-align:right;">
+            <div class="prod-item-qty">${qty}</div>
+            <div class="prod-item-unit">${t('prod_pcs')}</div>
+          </div>
+        </div>`).join('');
+
+    // ── Breakdown by delivery date ──
+    const byDate = {};
+    filtered.forEach(o => {
+      const key = o.delivery || '__nodate__';
+      if (!byDate[key]) byDate[key] = [];
+      byDate[key].push(o);
+    });
+
+    // Sort dates ascending; no-date group goes last
+    const sortedDates = Object.keys(byDate).sort((a,b) => {
+      if (a === '__nodate__') return 1;
+      if (b === '__nodate__') return -1;
+      return a.localeCompare(b);
+    });
+
+    const byDateEl = document.getElementById('prod-by-date');
+    byDateEl.innerHTML = sortedDates.map(dateKey => {
+      const dateOrders = byDate[dateKey];
+
+      // Aggregate per product for this date
+      const dateTotals = {};
+      dateOrders.forEach(o => (o.items||[]).forEach(i => {
+        dateTotals[i.product] = (dateTotals[i.product]||0) + i.qty;
+      }));
+
+      const dateLabel = dateKey === '__nodate__'
+        ? t('prod_no_date')
+        : new Date(dateKey + 'T00:00:00').toLocaleDateString(lang === 'id' ? 'id-ID' : 'en-GB', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+
+      const summaryTags = Object.entries(dateTotals).map(([name,qty]) =>
+        `<span class="prod-order-tag">${qty}× ${name}</span>`
+      ).join('');
+
+      const orderRows = dateOrders.map(o => {
+        const tags = (o.items||[]).map(i =>
+          `<span class="prod-order-tag">${i.qty}× ${i.product}</span>`
+        ).join('');
+        const statusMap = { New:'new', Preparing:'prep', Ready:'ready', Delivered:'delivered' };
+        return `<div class="prod-order-row">
+          <div>
+            <div class="prod-order-customer">${o.name}</div>
+            <div class="prod-order-delivery">${o.phone||''}</div>
+          </div>
+          <div class="prod-order-items">${tags}</div>
+          <span class="badge ${statusMap[o.status]||'new'}" style="flex-shrink:0;">${t('status_'+o.status.toLowerCase())||o.status}</span>
+        </div>`;
+      }).join('');
+
+      return `<div class="prod-date-group">
+        <div class="prod-date-label">${dateLabel}</div>
+        <div class="card" style="margin-bottom:0;">
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;padding-bottom:12px;border-bottom:0.5px solid var(--border-light);">
+            ${summaryTags}
+          </div>
+          ${orderRows}
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+
   function orderCardHTML(o) {
     const total = orderTotal(o);
     const itemsStr = (o.items||[]).map(i => `${i.qty}× ${i.product}`).join(', ');
