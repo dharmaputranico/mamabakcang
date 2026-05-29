@@ -350,6 +350,55 @@
   </div>
 </div>
 
+<!-- EDIT ORDER MODAL -->
+<div class="modal-bg" id="edit-order-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 data-i18n="edit_order">Edit order</h3>
+      <button class="modal-close" onclick="closeModal('edit-order-modal')">×</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label data-i18n="customer_name">Customer name *</label><input type="text" id="ef-name"></div>
+      <div class="form-group"><label data-i18n="phone">Phone / WhatsApp</label><input type="text" id="ef-phone"></div>
+      <div class="form-group"><label data-i18n="order_date">Order date</label><input type="date" id="ef-date"></div>
+      <div class="form-group"><label data-i18n="delivery_date">Delivery date</label><input type="date" id="ef-delivery"></div>
+    </div>
+    <div style="margin-bottom:14px;">
+      <div class="section-title" data-i18n="items_ordered">Items ordered</div>
+      <div id="edit-item-rows"></div>
+      <button class="btn" style="margin-top:8px;" onclick="addEditItemRow()"><i class="ti ti-plus" style="font-size:13px;vertical-align:-1px;margin-right:4px;"></i><span data-i18n="add_item">Add item</span></button>
+    </div>
+    <div class="form-group full" style="margin-bottom:14px;">
+      <label data-i18n="address_notes">Delivery address / notes</label>
+      <textarea id="ef-notes"></textarea>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:space-between;align-items:center;">
+      <button class="btn" style="color:var(--red-text);border-color:var(--red-bg);" onclick="confirmDeleteOrder(currentEditId)">
+        <i class="ti ti-trash" style="font-size:13px;vertical-align:-1px;margin-right:4px;"></i><span data-i18n="delete_order">Delete order</span>
+      </button>
+      <div style="display:flex;gap:8px;">
+        <button class="btn" onclick="closeModal('edit-order-modal')" data-i18n="cancel">Cancel</button>
+        <button class="btn primary" onclick="updateOrder()" data-i18n="save_changes">Save changes</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE CONFIRMATION MODAL -->
+<div class="modal-bg" id="delete-confirm-modal">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-header">
+      <h3 data-i18n="delete_order">Delete order</h3>
+      <button class="modal-close" onclick="closeModal('delete-confirm-modal')">×</button>
+    </div>
+    <p id="delete-confirm-msg" style="font-size:14px;color:var(--text-secondary);font-family:system-ui,sans-serif;margin-bottom:1.5rem;line-height:1.6;"></p>
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button class="btn" onclick="closeModal('delete-confirm-modal')" data-i18n="cancel">Cancel</button>
+      <button class="btn danger" id="delete-confirm-btn" data-i18n="confirm_delete">Yes, delete</button>
+    </div>
+  </div>
+</div>
+
 <!-- ADD PRODUCT MODAL -->
 <div class="modal-bg" id="add-product-modal">
   <div class="modal" style="max-width:400px;">
@@ -416,6 +465,9 @@
       prod_by_date:'Order breakdown by delivery date',
       prod_pcs:'pcs', prod_no_orders:'No active orders to produce.',
       prod_from:'from', prod_no_date:'No date set',
+      edit_order:'Edit order', save_changes:'Save changes',
+      delete_order:'Delete order', confirm_delete:'Yes, delete',
+      delete_order_confirm:'Delete the order for "{name}"? This cannot be undone.',
     },
     id: {
       subtitle:'Pelacak pesanan & pengiriman', nav_overview:'Ringkasan', nav_orders:'Pesanan',
@@ -455,6 +507,9 @@
       prod_by_date:'Rincian pesanan per tanggal kirim',
       prod_pcs:'bh', prod_no_orders:'Tidak ada pesanan aktif untuk diproduksi.',
       prod_from:'dari', prod_no_date:'Tanggal belum diisi',
+      edit_order:'Ubah pesanan', save_changes:'Simpan perubahan',
+      delete_order:'Hapus pesanan', confirm_delete:'Ya, hapus',
+      delete_order_confirm:'Hapus pesanan untuk "{name}"? Tindakan ini tidak dapat dibatalkan.',
     }
   };
   function t(k) { return (T[lang]&&T[lang][k]) || T.en[k] || k; }
@@ -950,9 +1005,12 @@
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:4px;border-top:0.5px solid var(--border-light);">
         <span class="pay-badge ${o.paid?'paid':'unpaid'}">${o.paid?t('label_paid'):t('label_unpaid')}</span>
-        ${!o.paid
-          ? `<button class="btn green" onclick="markPaid('${o.id}');openDetail('${o.id}')">${t('mark_paid')}</button>`
-          : `<span style="font-size:13px;color:var(--text-secondary);font-family:system-ui,sans-serif;">${t('payment_received')}</span>`}
+        <div style="display:flex;gap:6px;align-items:center;">
+          <button class="btn" onclick="closeModal('detail-modal');openEditOrder('${o.id}')"><i class="ti ti-pencil" style="font-size:13px;vertical-align:-1px;margin-right:4px;"></i>${t('edit_order')}</button>
+          ${!o.paid
+            ? `<button class="btn green" onclick="markPaid('${o.id}');openDetail('${o.id}')">${t('mark_paid')}</button>`
+            : `<span style="font-size:13px;color:var(--text-secondary);font-family:system-ui,sans-serif;">${t('payment_received')}</span>`}
+        </div>
       </div>`;
     document.getElementById('detail-modal').classList.add('open');
   };
@@ -964,6 +1022,123 @@
     const o = orders.find(x=>x.id===id);
     if (o) o.paid = true;
     setSyncState('ok');
+    render();
+  };
+
+  /* ── EDIT ORDER ── */
+  let currentEditId = null;
+
+  window.openEditOrder = function(id) {
+    const o = orders.find(x=>x.id===id);
+    if (!o) return;
+    currentEditId = id;
+
+    document.getElementById('ef-name').value     = o.name || '';
+    document.getElementById('ef-phone').value    = o.phone || '';
+    document.getElementById('ef-date').value     = o.date || '';
+    document.getElementById('ef-delivery').value = o.delivery || '';
+    document.getElementById('ef-notes').value    = o.notes || '';
+
+    // Populate item rows
+    const rowsEl = document.getElementById('edit-item-rows');
+    rowsEl.innerHTML = '';
+    (o.items||[]).forEach(item => addEditItemRow(item));
+    if (!o.items || o.items.length === 0) addEditItemRow();
+
+    document.getElementById('edit-order-modal').classList.add('open');
+  };
+
+  window.addEditItemRow = function(prefill) {
+    const row = document.createElement('div');
+    row.className = 'edit-item-row';
+    row.style.cssText = 'display:grid;grid-template-columns:1fr auto auto auto;gap:8px;align-items:end;margin-bottom:8px;';
+    const opts = products.map(p=>`<option value="${p.id}" data-price="${p.price}">${p.name}</option>`).join('');
+    row.innerHTML = `
+      <div class="form-group"><label>${t('col_product')}</label>
+        <select class="edit-item-product" onchange="onEditProductChange(this)">${opts}</select></div>
+      <div class="form-group" style="width:68px;"><label>${t('label_qty')}</label>
+        <input type="number" class="edit-item-qty" min="1" value="${prefill?.qty||1}" style="width:68px;"></div>
+      <div class="form-group" style="width:120px;"><label>${t('label_price')}</label>
+        <input type="number" class="edit-item-price" min="0" style="width:120px;" value="${prefill?.price||0}"></div>
+      <div style="padding-bottom:2px;">
+        <button class="btn" style="padding:7px 10px;" onclick="this.closest('.edit-item-row').remove()"><i class="ti ti-x" style="font-size:14px;vertical-align:-1px;"></i></button>
+      </div>`;
+    document.getElementById('edit-item-rows').appendChild(row);
+
+    // If prefilling with existing product name, try to select matching option
+    if (prefill?.product) {
+      const sel = row.querySelector('.edit-item-product');
+      const match = Array.from(sel.options).find(opt => opt.text === prefill.product);
+      if (match) { sel.value = match.value; }
+      else {
+        // Product was renamed/deleted — add it as a custom option so data isn't lost
+        const customOpt = document.createElement('option');
+        customOpt.value = '__custom__'; customOpt.text = prefill.product; customOpt.selected = true;
+        sel.insertBefore(customOpt, sel.firstChild);
+      }
+    }
+  };
+
+  window.onEditProductChange = function(sel) {
+    const opt = sel.selectedOptions[0];
+    const priceInput = sel.closest('.edit-item-row').querySelector('.edit-item-price');
+    if (opt?.dataset.price) priceInput.value = opt.dataset.price;
+  };
+
+  window.updateOrder = async function() {
+    const name = document.getElementById('ef-name').value.trim();
+    if (!name) { alert(t('customer_name')); return; }
+
+    const items = [];
+    document.querySelectorAll('.edit-item-row').forEach(row => {
+      const sel     = row.querySelector('.edit-item-product');
+      const product = sel.selectedOptions[0]?.text || sel.value;
+      const qty     = parseInt(row.querySelector('.edit-item-qty').value)||1;
+      const price   = parseFloat(row.querySelector('.edit-item-price').value)||0;
+      items.push({ product, qty, price });
+    });
+
+    const updates = {
+      name,
+      phone:    document.getElementById('ef-phone').value.trim(),
+      date:     document.getElementById('ef-date').value,
+      delivery: document.getElementById('ef-delivery').value,
+      notes:    document.getElementById('ef-notes').value.trim(),
+      items,
+    };
+
+    setSyncState('syncing');
+    const { error } = await sb.from('orders').update(updates).eq('id', currentEditId);
+    if (error) { console.error(error); setSyncState('error'); return; }
+
+    const idx = orders.findIndex(x=>x.id===currentEditId);
+    if (idx >= 0) orders[idx] = { ...orders[idx], ...updates };
+
+    setSyncState('ok');
+    closeModal('edit-order-modal');
+    render();
+  };
+
+  /* ── DELETE ORDER ── */
+  window.confirmDeleteOrder = function(id) {
+    const o = orders.find(x=>x.id===id);
+    if (!o) return;
+    const msg = t('delete_order_confirm').replace('{name}', o.name);
+    document.getElementById('delete-confirm-msg').textContent = msg;
+    document.getElementById('delete-confirm-btn').onclick = () => deleteOrder(id);
+    // Close edit modal if open, then show confirm
+    document.getElementById('edit-order-modal').classList.remove('open');
+    document.getElementById('delete-confirm-modal').classList.add('open');
+  };
+
+  window.deleteOrder = async function(id) {
+    setSyncState('syncing');
+    const { error } = await sb.from('orders').delete().eq('id', id);
+    if (error) { console.error(error); setSyncState('error'); return; }
+    orders = orders.filter(o=>o.id!==id);
+    setSyncState('ok');
+    closeModal('delete-confirm-modal');
+    closeModal('detail-modal');
     render();
   };
 
