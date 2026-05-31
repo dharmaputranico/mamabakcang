@@ -727,10 +727,6 @@
       <div class="metric"><div class="label">${t('metric_in_progress')}</div><div class="val">${inProgress}</div></div>
       <div class="metric"><div class="label">${t('metric_ready_deliver')}</div><div class="val">${ready}</div></div>
       <div class="metric"><div class="label">${t('metric_await_payment')}</div><div class="val" style="font-size:17px;color:#A32D2D;">${fmtRp(unpaidAmt)}</div></div>`;
-    const recent = [...orders].reverse().slice(0,5);
-    document.getElementById('recent-orders-list').innerHTML = recent.length
-      ? recent.map(orderCardHTML).join('')
-      : `<div class="empty"><i class="ti ti-clipboard"></i>${t('empty_no_orders')}</div>`;
   }
 
   /* ── ORDERS ── */
