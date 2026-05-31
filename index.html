@@ -466,6 +466,7 @@
       edit_order:'Edit order', save_changes:'Save changes',
       delete_order:'Delete order', confirm_delete:'Yes, delete',
       delete_order_confirm:'Delete the order for "{name}"? This cannot be undone.',
+      copy_summary:'Copy summary', copied:'Copied!', mark_unpaid:'Mark as unpaid',
     },
     id: {
       subtitle:'Pelacak pesanan & pengiriman', nav_overview:'Ringkasan', nav_orders:'Pesanan',
@@ -508,6 +509,7 @@
       edit_order:'Ubah pesanan', save_changes:'Simpan perubahan',
       delete_order:'Hapus pesanan', confirm_delete:'Ya, hapus',
       delete_order_confirm:'Hapus pesanan untuk "{name}"? Tindakan ini tidak dapat dibatalkan.',
+      copy_summary:'Salin ringkasan', copied:'Tersalin!', mark_unpaid:'Tandai belum lunas',
     }
   };
   function t(k) { return (T[lang]&&T[lang][k]) || T.en[k] || k; }
@@ -994,10 +996,11 @@
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:4px;border-top:0.5px solid var(--border-light);">
         <span class="pay-badge ${o.paid?'paid':'unpaid'}">${o.paid?t('label_paid'):t('label_unpaid')}</span>
         <div style="display:flex;gap:6px;align-items:center;">
+          <button class="btn" id="copy-btn-${o.id}" onclick="copyOrderSummary('${o.id}')"><i class="ti ti-copy" style="font-size:13px;vertical-align:-1px;margin-right:4px;"></i>${t('copy_summary')}</button>
           <button class="btn" onclick="closeModal('detail-modal');openEditOrder('${o.id}')"><i class="ti ti-pencil" style="font-size:13px;vertical-align:-1px;margin-right:4px;"></i>${t('edit_order')}</button>
           ${!o.paid
             ? `<button class="btn green" onclick="markPaid('${o.id}');openDetail('${o.id}')">${t('mark_paid')}</button>`
-            : `<span style="font-size:13px;color:var(--text-secondary);font-family:system-ui,sans-serif;">${t('payment_received')}</span>`}
+            : `<button class="btn" style="color:var(--red-text);border-color:var(--red-bg);" onclick="markUnpaid('${o.id}');openDetail('${o.id}')">${t('mark_unpaid')}</button>`}
         </div>
       </div>`;
     document.getElementById('detail-modal').classList.add('open');
@@ -1011,6 +1014,50 @@
     if (o) o.paid = true;
     setSyncState('ok');
     render();
+  };
+
+  window.markUnpaid = async function(id) {
+    setSyncState('syncing');
+    const { error } = await sb.from('orders').update({ paid: false }).eq('id', id);
+    if (error) { setSyncState('error'); return; }
+    const o = orders.find(x=>x.id===id);
+    if (o) o.paid = false;
+    setSyncState('ok');
+    render();
+  };
+
+  window.copyOrderSummary = function(id) {
+    const o = orders.find(x=>x.id===id);
+    if (!o) return;
+    const total = orderTotal(o);
+    const sep = '─'.repeat(28);
+
+    const lines = [
+      `${t('customer_name').replace(' *','')} : ${o.name}`,
+      o.delivery ? `${t('delivery_date')}  : ${o.delivery}` : null,
+      sep,
+      ...(o.items||[]).map(i => {
+        const subtotal = i.qty * i.price;
+        return `${i.product}\n  ${i.qty} × ${fmtRp(i.price)} = ${fmtRp(subtotal)}`;
+      }),
+      sep,
+      `Total : ${fmtRp(total)}`,
+      o.paid ? `Status : ${t('label_paid')} ✓` : `Status : ${t('label_unpaid')}`,
+    ].filter(l => l !== null).join('\n');
+
+    navigator.clipboard.writeText(lines).then(() => {
+      const btn = document.getElementById(`copy-btn-${id}`);
+      if (btn) {
+        btn.innerHTML = `<i class="ti ti-check" style="font-size:13px;vertical-align:-1px;margin-right:4px;"></i>${t('copied')}`;
+        btn.style.color = 'var(--green-text)';
+        btn.style.borderColor = 'var(--green-mid)';
+        setTimeout(() => {
+          btn.innerHTML = `<i class="ti ti-copy" style="font-size:13px;vertical-align:-1px;margin-right:4px;"></i>${t('copy_summary')}`;
+          btn.style.color = '';
+          btn.style.borderColor = '';
+        }, 2000);
+      }
+    });
   };
 
   /* ── EDIT ORDER ── */
