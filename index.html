@@ -296,10 +296,6 @@
       <!-- Summary cards -->
       <div class="section-title" data-i18n="prod_summary">What to make</div>
       <div class="prod-summary-grid" id="prod-summary-grid"></div>
-
-      <!-- Per-date breakdown -->
-      <div class="section-title" style="margin-top:0.5rem" data-i18n="prod_by_date">Order breakdown by delivery date</div>
-      <div id="prod-by-date"></div>
     </div>
 
     <div id="page-products" class="page">
@@ -588,8 +584,6 @@
 
   function renderProduction() {
     const filtered = getProdOrders();
-
-    // ── Summary cards: aggregate qty per product ──
     const totals = {};
     filtered.forEach(o => {
       (o.items||[]).forEach(i => {
@@ -602,7 +596,6 @@
 
     if (!Object.keys(totals).length) {
       summaryEl.innerHTML = `<div class="empty" style="grid-column:1/-1"><i class="ti ti-basket-off"></i>${t('prod_no_orders')}</div>`;
-      document.getElementById('prod-by-date').innerHTML = '';
       return;
     }
 
@@ -620,65 +613,6 @@
             <div class="prod-item-unit">${t('prod_pcs')}</div>
           </div>
         </div>`).join('');
-
-    // ── Breakdown by delivery date ──
-    const byDate = {};
-    filtered.forEach(o => {
-      const key = o.delivery || '__nodate__';
-      if (!byDate[key]) byDate[key] = [];
-      byDate[key].push(o);
-    });
-
-    // Sort dates ascending; no-date group goes last
-    const sortedDates = Object.keys(byDate).sort((a,b) => {
-      if (a === '__nodate__') return 1;
-      if (b === '__nodate__') return -1;
-      return a.localeCompare(b);
-    });
-
-    const byDateEl = document.getElementById('prod-by-date');
-    byDateEl.innerHTML = sortedDates.map(dateKey => {
-      const dateOrders = byDate[dateKey];
-
-      // Aggregate per product for this date
-      const dateTotals = {};
-      dateOrders.forEach(o => (o.items||[]).forEach(i => {
-        dateTotals[i.product] = (dateTotals[i.product]||0) + i.qty;
-      }));
-
-      const dateLabel = dateKey === '__nodate__'
-        ? t('prod_no_date')
-        : new Date(dateKey + 'T00:00:00').toLocaleDateString(lang === 'id' ? 'id-ID' : 'en-GB', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
-
-      const summaryTags = Object.entries(dateTotals).map(([name,qty]) =>
-        `<span class="prod-order-tag">${qty}× ${name}</span>`
-      ).join('');
-
-      const orderRows = dateOrders.map(o => {
-        const tags = (o.items||[]).map(i =>
-          `<span class="prod-order-tag">${i.qty}× ${i.product}</span>`
-        ).join('');
-        const statusMap = { New:'new', Preparing:'prep', Ready:'ready', Delivered:'delivered' };
-        return `<div class="prod-order-row">
-          <div>
-            <div class="prod-order-customer">${o.name}</div>
-            <div class="prod-order-delivery">${o.phone||''}</div>
-          </div>
-          <div class="prod-order-items">${tags}</div>
-          <span class="badge ${statusMap[o.status]||'new'}" style="flex-shrink:0;">${t('status_'+o.status.toLowerCase())||o.status}</span>
-        </div>`;
-      }).join('');
-
-      return `<div class="prod-date-group">
-        <div class="prod-date-label">${dateLabel}</div>
-        <div class="card" style="margin-bottom:0;">
-          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;padding-bottom:12px;border-bottom:0.5px solid var(--border-light);">
-            ${summaryTags}
-          </div>
-          ${orderRows}
-        </div>
-      </div>`;
-    }).join('');
   }
 
 
@@ -936,7 +870,7 @@
       <div class="form-group" style="width:120px;"><label>${t('label_price')}</label>
         <input type="number" class="item-price" min="0" style="width:120px;" placeholder="0"></div>
       <div style="padding-bottom:2px;">
-        <button class="btn" style="padding:7px 10px;" onclick="this.closest('.item-row').remove()"><i class="ti ti-x" style="font-size:14px;vertical-align:-1px;"></i></button>
+        <button class="btn" style="padding:7px 10px;color:var(--red-text);border-color:var(--red-bg);" onclick="this.closest('.item-row').remove()" title="Remove item"><i class="ti ti-trash" style="font-size:14px;vertical-align:-1px;"></i></button>
       </div>`;
     document.getElementById('item-rows').appendChild(row);
     onProductChange(row.querySelector('.item-product'));
@@ -1061,7 +995,7 @@
       <div class="form-group" style="width:120px;"><label>${t('label_price')}</label>
         <input type="number" class="edit-item-price" min="0" style="width:120px;" value="${prefill?.price||0}"></div>
       <div style="padding-bottom:2px;">
-        <button class="btn" style="padding:7px 10px;" onclick="this.closest('.edit-item-row').remove()"><i class="ti ti-x" style="font-size:14px;vertical-align:-1px;"></i></button>
+        <button class="btn" style="padding:7px 10px;color:var(--red-text);border-color:var(--red-bg);" onclick="this.closest('.edit-item-row').remove()" title="Remove item"><i class="ti ti-trash" style="font-size:14px;vertical-align:-1px;"></i></button>
       </div>`;
     document.getElementById('edit-item-rows').appendChild(row);
 
