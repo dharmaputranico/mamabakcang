@@ -234,8 +234,6 @@
         <button class="add-btn" onclick="openNewOrder()"><i class="ti ti-plus"></i> <span data-i18n="new_order">New order</span></button>
       </div>
       <div class="metrics" id="metrics-overview"></div>
-      <div class="section-title" data-i18n="recent_orders">Recent orders</div>
-      <div id="recent-orders-list"></div>
     </div>
 
     <div id="page-orders" class="page">
@@ -296,6 +294,10 @@
       <!-- Summary cards -->
       <div class="section-title" data-i18n="prod_summary">What to make</div>
       <div class="prod-summary-grid" id="prod-summary-grid"></div>
+
+      <!-- Per-date breakdown -->
+      <div class="section-title" style="margin-top:1.5rem" data-i18n="prod_by_date">Order breakdown by delivery date</div>
+      <div id="prod-by-date"></div>
     </div>
 
     <div id="page-products" class="page">
@@ -596,6 +598,7 @@
 
     if (!Object.keys(totals).length) {
       summaryEl.innerHTML = `<div class="empty" style="grid-column:1/-1"><i class="ti ti-basket-off"></i>${t('prod_no_orders')}</div>`;
+      document.getElementById('prod-by-date').innerHTML = '';
       return;
     }
 
@@ -613,6 +616,61 @@
             <div class="prod-item-unit">${t('prod_pcs')}</div>
           </div>
         </div>`).join('');
+
+    // ── Breakdown by delivery date ──
+    const byDate = {};
+    filtered.forEach(o => {
+      const key = o.delivery || '__nodate__';
+      if (!byDate[key]) byDate[key] = [];
+      byDate[key].push(o);
+    });
+
+    const sortedDates = Object.keys(byDate).sort((a,b) => {
+      if (a === '__nodate__') return 1;
+      if (b === '__nodate__') return -1;
+      return a.localeCompare(b);
+    });
+
+    document.getElementById('prod-by-date').innerHTML = sortedDates.map(dateKey => {
+      const dateOrders = byDate[dateKey];
+      const dateTotals = {};
+      dateOrders.forEach(o => (o.items||[]).forEach(i => {
+        dateTotals[i.product] = (dateTotals[i.product]||0) + i.qty;
+      }));
+
+      const dateLabel = dateKey === '__nodate__'
+        ? t('prod_no_date')
+        : new Date(dateKey + 'T00:00:00').toLocaleDateString(lang === 'id' ? 'id-ID' : 'en-GB', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+
+      const summaryTags = Object.entries(dateTotals).map(([name,qty]) =>
+        `<span class="prod-order-tag">${qty}× ${name}</span>`
+      ).join('');
+
+      const orderRows = dateOrders.map(o => {
+        const tags = (o.items||[]).map(i =>
+          `<span class="prod-order-tag">${i.qty}× ${i.product}</span>`
+        ).join('');
+        const statusMap = { New:'new', Preparing:'prep', Ready:'ready', Delivered:'delivered' };
+        return `<div class="prod-order-row">
+          <div>
+            <div class="prod-order-customer">${o.name}</div>
+            <div class="prod-order-delivery">${o.phone||''}</div>
+          </div>
+          <div class="prod-order-items">${tags}</div>
+          <span class="badge ${statusMap[o.status]||'new'}" style="flex-shrink:0;">${t('status_'+(o.status||'').toLowerCase())||o.status}</span>
+        </div>`;
+      }).join('');
+
+      return `<div class="prod-date-group">
+        <div class="prod-date-label">${dateLabel}</div>
+        <div class="card" style="margin-bottom:0;">
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;padding-bottom:12px;border-bottom:0.5px solid var(--border-light);">
+            ${summaryTags}
+          </div>
+          ${orderRows}
+        </div>
+      </div>`;
+    }).join('');
   }
 
 
